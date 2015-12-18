@@ -4701,8 +4701,9 @@ function($timeout, $document, $q, $ionicClickBlock, $ionicConfig, $ionicNavBarDe
           if (renderStart && renderEnd) {
             // CSS "auto" transitioned, not manually transitioned
             // wait a frame so the styles apply before auto transitioning
-            ionic.requestAnimationFrame(onReflow);
-
+            $timeout(function() {
+              ionic.requestAnimationFrame(onReflow);
+            });
           } else if (!renderEnd) {
             // just the start of a manual transition
             // but it will not render the end of the transition
@@ -6808,6 +6809,15 @@ IonicModule
       $onPulling: '&onPulling'
     });
 
+    function handleMousedown(e) {
+      e.touches = e.touches || [{
+        screenX: e.screenX,
+        screenY: e.screenY
+      }];
+      // Mouse needs this
+      startY = Math.floor(e.touches[0].screenY);
+    }
+
     function handleTouchend() {
       // if this wasn't an overscroll, get out immediately
       if (!canOverscroll && !isDragging) {
@@ -6838,13 +6848,18 @@ IonicModule
     }
 
     function handleTouchmove(e) {
+      e.touches = e.touches || [{
+        screenX: e.screenX,
+        screenY: e.screenY
+      }];
+
       // if multitouch or regular scroll event, get out immediately
       if (!canOverscroll || e.touches.length > 1) {
         return;
       }
       //if this is a new drag, keep track of where we start
       if (startY === null) {
-        startY = parseInt(e.touches[0].screenY, 10);
+        startY = Math.floor(e.touches[0].screenY);
       }
 
       // kitkat fix for touchcancel events http://updates.html5rocks.com/2014/05/A-More-Compatible-Smoother-Touch
@@ -6854,7 +6869,7 @@ IonicModule
       }
 
       // how far have we dragged so far?
-      deltaY = parseInt(e.touches[0].screenY, 10) - startY;
+      deltaY = Math.floor(e.touches[0].screenY) - startY;
 
       // if we've dragged up and back down in to native scroll territory
       if (deltaY - dragOffset <= 0 || scrollParent.scrollTop !== 0) {
@@ -6865,7 +6880,7 @@ IonicModule
         }
 
         if (isDragging) {
-          nativescroll(scrollParent, parseInt(deltaY - dragOffset, 10) * -1);
+          nativescroll(scrollParent, Math.floor(deltaY - dragOffset) * -1);
         }
 
         // if we're not at overscroll 0 yet, 0 out
@@ -6890,7 +6905,7 @@ IonicModule
 
       isDragging = true;
       // overscroll according to the user's drag so far
-      overscroll(parseInt((deltaY - dragOffset) / 3, 10));
+      overscroll(Math.floor((deltaY - dragOffset) / 3));
 
       // update the icon accordingly
       if (!activated && lastOverscroll > ptrThreshold) {
@@ -6986,7 +7001,7 @@ IonicModule
           // fraction based on the easing method
           easedT = easeOutCubic(time);
 
-        overscroll(parseInt((easedT * (Y - from)) + from, 10));
+        overscroll(Math.floor((easedT * (Y - from)) + from));
 
         if (time < 1) {
           ionic.requestAnimationFrame(scroll);
@@ -7018,6 +7033,9 @@ IonicModule
 
       ionic.on('touchmove', handleTouchmove, scrollChild);
       ionic.on('touchend', handleTouchend, scrollChild);
+      ionic.on('mousedown', handleMousedown, scrollChild);
+      ionic.on('mousemove', handleTouchmove, scrollChild);
+      ionic.on('mouseup', handleTouchend, scrollChild);
       ionic.on('scroll', handleScroll, scrollParent);
 
       // cleanup when done
@@ -7027,6 +7045,9 @@ IonicModule
     function destroy() {
       ionic.off('touchmove', handleTouchmove, scrollChild);
       ionic.off('touchend', handleTouchend, scrollChild);
+      ionic.off('mousedown', handleMousedown, scrollChild);
+      ionic.off('mousemove', handleTouchmove, scrollChild);
+      ionic.off('mouseup', handleTouchend, scrollChild);
       ionic.off('scroll', handleScroll, scrollParent);
       scrollParent = null;
       scrollChild = null;
@@ -10464,7 +10485,15 @@ IonicModule
       this.$scope = $scope;
       this.$element = $element;
 
-      this.input = $element[0].querySelector('input,textarea');
+      this.setInputAriaLabeledBy = function(id) {
+        var inputs = $element[0].querySelectorAll('input,textarea');
+        inputs.length && inputs[0].setAttribute('aria-labelledby', id);
+      };
+
+      this.focus = function() {
+        var inputs = $element[0].querySelectorAll('input,textarea');
+        inputs.length && inputs[0].focus();
+      };
     }]
   };
 }]);
@@ -10511,12 +10540,13 @@ IonicModule
           $element.attr('id', id);
         }
 
-        if (ionInputCtrl && ionInputCtrl.input) {
-          ionInputCtrl.input.setAttribute('aria-labelledby', id);
+        if (ionInputCtrl) {
+
+          ionInputCtrl.setInputAriaLabeledBy(id);
 
           $element.on('click', function() {
             $timeout(function() {
-              ionInputCtrl.input.focus();
+              ionInputCtrl.focus();
             });
           });
         }
@@ -10545,8 +10575,8 @@ IonicModule
           $element.attr('id', id);
         }
 
-        if (ionInputCtrl && ionInputCtrl.input) {
-          ionInputCtrl.input.setAttribute('aria-labelledby', id);
+        if (ionInputCtrl) {
+          ionInputCtrl.setInputAriaLabeledBy(id);
         }
 
       };
@@ -12319,7 +12349,7 @@ function($timeout, $controller, $ionicBind, $ionicConfig) {
         if (!$scope.direction) { $scope.direction = 'y'; }
         var isPaging = $scope.$eval($scope.paging) === true;
 
-        if(nativeScrolling) {
+        if (nativeScrolling) {
           $element.addClass('overflow-scroll');
         }
 
@@ -13047,7 +13077,9 @@ function($animate, $timeout) {
       this.update = function() {
         $timeout(function() {
           _this.__slider.update();
-          _this.__slider.createLoop();
+          if (_this._options.loop) {
+            _this.__slider.createLoop();
+          }
 
           // Don't allow pager to show with > 10 slides
           if (_this.__slider.slides.length > 10) {
@@ -13073,8 +13105,10 @@ function($animate, $timeout) {
         preloadImages: false
       }, options);
 
+      this._options = newOptions;
+
       $timeout(function() {
-        var slider = new ionic.views.Swiper($element.children()[0], newOptions);
+        var slider = new ionic.views.Swiper($element.children()[0], newOptions, $scope);
 
         _this.__slider = slider;
         $scope.slider = _this.__slider;

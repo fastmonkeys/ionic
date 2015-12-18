@@ -6927,7 +6927,7 @@ ionic.scroll = {
 
 (function(ionic) {
   var NOOP = function() {};
-  var depreciated = function(name) {
+  var deprecated = function(name) {
     void 0;
   };
   ionic.views.ScrollNative = ionic.views.View.inherit({
@@ -6993,10 +6993,10 @@ ionic.scroll = {
     },
 
     /**  Methods not used in native scrolling */
-    __callback: function() { depreciated('__callback'); },
-    zoomTo: function() { depreciated('zoomTo'); },
-    zoomBy: function() { depreciated('zoomBy'); },
-    activatePullToRefresh: function() { depreciated('activatePullToRefresh'); },
+    __callback: function() { deprecated('__callback'); },
+    zoomTo: function() { deprecated('zoomTo'); },
+    zoomBy: function() { deprecated('zoomBy'); },
+    activatePullToRefresh: function() { deprecated('activatePullToRefresh'); },
 
     /**
      * Returns the scroll position and zooming values
@@ -7386,11 +7386,10 @@ ionic.scroll = {
       var self = this;
       var container = self.__container;
 
-      container.removeEventListener('resetScrollView', self.resetScrollView);
       container.removeEventListener('scroll', self.onScroll);
-
       container.removeEventListener('scrollChildIntoView', self.scrollChildIntoView);
-      container.removeEventListener('resetScrollView', self.resetScrollView);
+
+      document.removeEventListener('resetScrollView', self.resetScrollView);
 
       ionic.tap.removeClonedInputs(container, self);
 
@@ -8809,6 +8808,7 @@ ionic.views.Slider = ionic.views.View.inherit({
     Swiper
     ===========================*/
     var Swiper = function (container, params) {
+
         if (!(this instanceof Swiper)) return new Swiper(container, params);
 
         var defaults = {
@@ -9205,6 +9205,9 @@ ionic.views.Slider = ionic.views.View.inherit({
 
         // Velocity
         s.velocity = 0;
+
+        // Remove duplicated slides
+        var $compile = angular.element(s.wrapper).injector().get('$compile');
 
         /*=========================
           Locks, unlocks
@@ -10836,8 +10839,9 @@ ionic.views.Slider = ionic.views.View.inherit({
           ===========================*/
         // Create looped slides
         s.createLoop = function () {
-            // Remove duplicated slides
-            s.wrapper.children('.' + s.params.slideClass + '.' + s.params.slideDuplicateClass).remove();
+
+            var toRemove = s.wrapper.children('.' + s.params.slideClass + '.' + s.params.slideDuplicateClass);
+            angular.element(toRemove).remove();
 
             var slides = s.wrapper.children('.' + s.params.slideClass);
 
@@ -10849,7 +10853,7 @@ ionic.views.Slider = ionic.views.View.inherit({
                 s.loopedSlides = slides.length;
             }
 
-            var prependSlides = [], appendSlides = [], i;
+            var prependSlides = [], appendSlides = [], i, scope, newNode;
             slides.each(function (index, el) {
                 var slide = $(this);
                 if (index < s.loopedSlides) appendSlides.push(el);
@@ -10857,10 +10861,24 @@ ionic.views.Slider = ionic.views.View.inherit({
                 slide.attr('data-swiper-slide-index', index);
             });
             for (i = 0; i < appendSlides.length; i++) {
-                s.wrapper.append($(appendSlides[i].cloneNode(true)).addClass(s.params.slideDuplicateClass));
+              newNode = angular.element(appendSlides[i]).clone().addClass(s.params.slideDuplicateClass);
+              newNode.removeAttr('ng-transclude');
+              newNode.removeAttr('ng-repeat');
+              scope = angular.element(appendSlides[i]).scope();
+              newNode = $compile(newNode)(scope);
+              angular.element(s.wrapper).append(newNode);
+                //s.wrapper.append($(appendSlides[i].cloneNode(true)).addClass(s.params.slideDuplicateClass));
             }
             for (i = prependSlides.length - 1; i >= 0; i--) {
-                s.wrapper.prepend($(prependSlides[i].cloneNode(true)).addClass(s.params.slideDuplicateClass));
+                //s.wrapper.prepend($(prependSlides[i].cloneNode(true)).addClass(s.params.slideDuplicateClass));
+
+              newNode = angular.element(prependSlides[i]).clone().addClass(s.params.slideDuplicateClass);
+              newNode.removeAttr('ng-transclude');
+              newNode.removeAttr('ng-repeat');
+
+              scope = angular.element(prependSlides[i]).scope();
+              newNode = $compile(newNode)(scope);
+              angular.element(s.wrapper).prepend(newNode);
             }
         };
         s.destroyLoop = function () {
