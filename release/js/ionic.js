@@ -1778,8 +1778,8 @@ window.ionic.version = '1.0.1';
 
       } else if (!this.preventedFirstMove && ev.srcEvent.type == 'touchmove') {
         // Prevent gestures that are not intended for this event handler from firing subsequent times
-        if (inst.options.prevent_default_directions.length === 0
-            || inst.options.prevent_default_directions.indexOf(ev.direction) != -1) {
+        if (inst.options.prevent_default_directions.length > 0
+            && inst.options.prevent_default_directions.indexOf(ev.direction) != -1) {
           ev.srcEvent.preventDefault();
         }
         this.preventedFirstMove = true;
@@ -7303,11 +7303,10 @@ ionic.scroll = {
       var self = this;
       var container = self.__container;
 
-      container.removeEventListener('resetScrollView', self.resetScrollView);
       container.removeEventListener('scroll', self.onScroll);
-
       container.removeEventListener('scrollChildIntoView', self.scrollChildIntoView);
-      container.removeEventListener('resetScrollView', self.resetScrollView);
+
+      document.removeEventListener('resetScrollView', self.resetScrollView);
 
       ionic.tap.removeClonedInputs(container, self);
 
