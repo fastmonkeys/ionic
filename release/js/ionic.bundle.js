@@ -51244,8 +51244,10 @@ function($scope, $attrs, $element, $timeout) {
     return isDefined($attrs.spinner) ? $attrs.spinner : '';
   };
 
-  $scope.$on('scroll.infiniteScrollComplete', function() {
-    finishInfiniteScroll();
+  $scope.$on('scroll.infiniteScrollComplete', function(event, args) {
+    if (!args || args == $element.attr('delegate')) {
+      finishInfiniteScroll();
+    }
   });
 
   $scope.$on('$destroy', function() {
