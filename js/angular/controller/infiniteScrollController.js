@@ -17,7 +17,7 @@ function($scope, $attrs, $element, $timeout) {
   };
 
   $scope.$on('scroll.infiniteScrollComplete', function(event, args) {
-    if (!args || args == $element.attr('delegate')) {
+    if (!args || args == $scope.delegate) {
       finishInfiniteScroll();
     }
   });

@@ -74,7 +74,9 @@ IonicModule
       if ($attrs.icon) return '<i class="icon {{icon()}} icon-refreshing {{scrollingType}}"></i>';
       return '<ion-spinner icon="{{spinner()}}"></ion-spinner>';
     },
-    scope: true,
+    scope: {
+      delegate: "@"
+    },
     controller: '$ionInfiniteScroll',
     link: function($scope, $element, $attrs, ctrls) {
       var infiniteScrollCtrl = ctrls[1];
